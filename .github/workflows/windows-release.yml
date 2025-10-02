@@ -1,0 +1,64 @@
+name: Windows Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install build tools
+        shell: pwsh
+        run: |
+          choco install -y ninja cmake git 7zip
+          pip install aqtinstall
+
+      - name: Install GStreamer (MSVC x86_64)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $runtimeUrl = 'https://gstreamer.freedesktop.org/data/pkg/windows/1.24.10/msvc/gstreamer-1.0-msvc-x86_64-1.24.10.msi'
+          $develUrl   = 'https://gstreamer.freedesktop.org/data/pkg/windows/1.24.10/msvc/gstreamer-1.0-devel-msvc-x86_64-1.24.10.msi'
+          Invoke-WebRequest $runtimeUrl -OutFile gstreamer-runtime.msi
+          Invoke-WebRequest $develUrl   -OutFile gstreamer-devel.msi
+          Start-Process msiexec -ArgumentList '/i','gstreamer-runtime.msi','/qn','/norestart' -Wait
+          Start-Process msiexec -ArgumentList '/i','gstreamer-devel.msi','/qn','/norestart' -Wait
+          echo "GSTREAMER_1_0_ROOT_MSVC_X86_64=C:\\gstreamer\\1.0\\msvc_x86_64" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Install Qt 6 (MSVC 2022)
+        shell: pwsh
+        run: |
+          aqt install-qt windows desktop 6.9.2 win64_msvc2022_64 --outputdir C:\\Qt
+          echo "QT_ROOT_DIR=C:\\Qt\\6.9.2\\msvc2022_64" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Configure (CMake Preset)
+        shell: pwsh
+        run: |
+          cmake --preset Windows
+
+      - name: Build Release
+        shell: pwsh
+        run: |
+          cmake --build --preset Windows
+
+      - name: Package
+        shell: pwsh
+        run: |
+          cmake --build --preset Windows --target package
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: qgc-windows
+          path: |
+            build/qt6-Windows/Release/QGroundControl.exe
+            build/qt6-Windows/_CPack_Packages/**/*
+
