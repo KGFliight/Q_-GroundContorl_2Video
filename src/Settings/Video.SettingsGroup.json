@@ -134,6 +134,69 @@
     "enumStrings":      "Default,Force software decoder,Force NVIDIA decoder,Force VA-API decoder,Force DirectX3D 11 decoder,Force VideoToolbox decoder,Force Intel decoder,Force Vulkan decoder",
     "enumValues":       "0,1,2,3,4,5,6,7",
     "default":           0
+},
+{
+    "name":             "videoSource2",
+    "shortDesc": "Secondary Video source",
+    "longDesc":  "Secondary source for video. UDP, TCP, RTSP and UVC Cameras may be supported depending on Vehicle and ground station version.",
+    "type":             "string",
+    "default":     ""
+},
+{
+    "name":             "udpUrl2",
+    "shortDesc": "Secondary Video UDP Url",
+    "longDesc":  "UDP url address and port to bind to for secondary video stream. Example: 0.0.0.0:5601",
+    "type":             "string",
+    "default":     "0.0.0.0:5601"
+},
+{
+    "name":             "rtspUrl2",
+    "shortDesc": "Secondary Video RTSP Url",
+    "longDesc":  "RTSP url address and port to bind to for secondary video stream. Example: rtsp://192.168.42.2:554/live",
+    "type":             "string",
+    "default":     ""
+},
+{
+    "name":             "tcpUrl2",
+    "shortDesc": "Secondary Video TCP Url",
+    "longDesc":  "TCP url address and port to bind to for secondary video stream. Example: 192.168.143.201:3001",
+    "type":             "string",
+    "default":     ""
+},
+{
+    "name":             "aspectRatio2",
+    "shortDesc": "Secondary Video Aspect Ratio",
+    "longDesc":  "Secondary Video Aspect Ratio (width / height). Use 0.0 to ignore it.",
+    "type":             "float",
+    "decimalPlaces":    6,
+    "default":     1.777777
+},
+{
+    "name":             "videoFit2",
+    "shortDesc": "Secondary Video Display Fit",
+    "longDesc":  "Handle Video Aspect Ratio for the secondary source.",
+    "type":             "uint32",
+    "enumStrings":      "Fit Width,Fit Height,Fill,No Crop",
+    "enumValues":       "0,1,2,3",
+    "default":     1
+},
+{
+    "name":             "rtspTimeout2",
+    "shortDesc": "Secondary RTSP Video Timeout",
+    "longDesc":  "How long to wait before assuming the secondary RTSP link is gone.",
+    "type":             "uint32",
+    "min":              1,
+    "units":            "s",
+    "default":     8
+},
+{
+    "name":             "activeVideoSource",
+    "shortDesc": "Active Video Source",
+    "longDesc":  "Currently active video source (Primary or Secondary). Triple-click video display to swap.",
+    "type":             "uint32",
+    "enumStrings":      "Primary,Secondary",
+    "enumValues":       "0,1",
+    "default":           0
 }
 ]
 }

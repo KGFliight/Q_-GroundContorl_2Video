@@ -91,6 +91,14 @@ void VideoManager::init(QQuickWindow *window)
     (void) connect(_videoSettings->tcpUrl(), &Fact::rawValueChanged, this, &VideoManager::_videoSourceChanged);
     (void) connect(_videoSettings->aspectRatio(), &Fact::rawValueChanged, this, &VideoManager::aspectRatioChanged);
     (void) connect(_videoSettings->lowLatencyMode(), &Fact::rawValueChanged, this, [this](const QVariant &value) { Q_UNUSED(value); _restartAllVideos(); });
+    
+    // Secondary video source connections
+    (void) connect(_videoSettings->videoSource2(), &Fact::rawValueChanged, this, &VideoManager::_videoSourceChanged);
+    (void) connect(_videoSettings->udpUrl2(), &Fact::rawValueChanged, this, &VideoManager::_videoSourceChanged);
+    (void) connect(_videoSettings->rtspUrl2(), &Fact::rawValueChanged, this, &VideoManager::_videoSourceChanged);
+    (void) connect(_videoSettings->tcpUrl2(), &Fact::rawValueChanged, this, &VideoManager::_videoSourceChanged);
+    (void) connect(_videoSettings->activeVideoSource(), &Fact::rawValueChanged, this, &VideoManager::_videoSourceChanged);
+    
     (void) connect(MultiVehicleManager::instance(), &MultiVehicleManager::activeVehicleChanged, this, &VideoManager::_setActiveVehicle);
 
     (void) connect(this, &VideoManager::autoStreamConfiguredChanged, this, &VideoManager::_videoSourceChanged);
@@ -505,17 +513,35 @@ bool VideoManager::_updateSettings(VideoReceiver *receiver)
     settingsChanged |= _updateUVC(receiver);
     settingsChanged |= _updateAutoStream(receiver);
 
-    const QString source = _videoSettings->videoSource()->rawValue().toString();
+    // Determine which video source to use (primary or secondary)
+    int activeSource = _videoSettings->activeVideoSource()->rawValue().toInt();
+    QString source;
+    QString udpUrl, rtspUrl, tcpUrl;
+    
+    if (activeSource == 0) {
+        // Primary source
+        source = _videoSettings->videoSource()->rawValue().toString();
+        udpUrl = _videoSettings->udpUrl()->rawValue().toString();
+        rtspUrl = _videoSettings->rtspUrl()->rawValue().toString();
+        tcpUrl = _videoSettings->tcpUrl()->rawValue().toString();
+    } else {
+        // Secondary source
+        source = _videoSettings->videoSource2()->rawValue().toString();
+        udpUrl = _videoSettings->udpUrl2()->rawValue().toString();
+        rtspUrl = _videoSettings->rtspUrl2()->rawValue().toString();
+        tcpUrl = _videoSettings->tcpUrl2()->rawValue().toString();
+    }
+
     if (source == VideoSettings::videoSourceUDPH264) {
-        settingsChanged |= _updateVideoUri(receiver, QStringLiteral("udp://%1").arg(_videoSettings->udpUrl()->rawValue().toString()));
+        settingsChanged |= _updateVideoUri(receiver, QStringLiteral("udp://%1").arg(udpUrl));
     } else if (source == VideoSettings::videoSourceUDPH265) {
-        settingsChanged |= _updateVideoUri(receiver, QStringLiteral("udp265://%1").arg(_videoSettings->udpUrl()->rawValue().toString()));
+        settingsChanged |= _updateVideoUri(receiver, QStringLiteral("udp265://%1").arg(udpUrl));
     } else if (source == VideoSettings::videoSourceMPEGTS) {
-        settingsChanged |= _updateVideoUri(receiver, QStringLiteral("mpegts://%1").arg(_videoSettings->udpUrl()->rawValue().toString()));
+        settingsChanged |= _updateVideoUri(receiver, QStringLiteral("mpegts://%1").arg(udpUrl));
     } else if (source == VideoSettings::videoSourceRTSP) {
-        settingsChanged |= _updateVideoUri(receiver, _videoSettings->rtspUrl()->rawValue().toString());
+        settingsChanged |= _updateVideoUri(receiver, rtspUrl);
     } else if (source == VideoSettings::videoSourceTCP) {
-        settingsChanged |= _updateVideoUri(receiver, QStringLiteral("tcp://%1").arg(_videoSettings->tcpUrl()->rawValue().toString()));
+        settingsChanged |= _updateVideoUri(receiver, QStringLiteral("tcp://%1").arg(tcpUrl));
     } else if (source == VideoSettings::videoSource3DRSolo) {
         settingsChanged |= _updateVideoUri(receiver, QStringLiteral("udp://0.0.0.0:5600"));
     } else if (source == VideoSettings::videoSourceParrotDiscovery) {
@@ -651,11 +677,16 @@ void VideoManager::_startReceiver(VideoReceiver *receiver)
         return;
     }
 
-    const QString source = _videoSettings->videoSource()->rawValue().toString();
-    /* The gstreamer rtsp source will switch to tcp if udp is not available after 5 seconds.
-       So we should allow for some negotiation time for rtsp */
-
-    const uint32_t timeout = ((source == VideoSettings::videoSourceRTSP) ? _videoSettings->rtspTimeout()->rawValue().toUInt() : 3);
+    // Choose timeout based on active source and protocol
+    const int active = _videoSettings->activeVideoSource()->rawValue().toInt();
+    const QString source = active == 0 ? _videoSettings->videoSource()->rawValue().toString()
+                                       : _videoSettings->videoSource2()->rawValue().toString();
+    // The gstreamer rtsp source will switch to tcp if udp is not available after a few seconds.
+    // Allow negotiation time for RTSP; pick the corresponding timeout.
+    const uint32_t timeout = (source == VideoSettings::videoSourceRTSP)
+        ? (active == 0 ? _videoSettings->rtspTimeout()->rawValue().toUInt()
+                       : _videoSettings->rtspTimeout2()->rawValue().toUInt())
+        : 3;
 
     receiver->start(timeout);
 }
@@ -787,6 +818,27 @@ void VideoManager::startVideo()
     }
 
     _restartAllVideos();
+}
+
+void VideoManager::swapVideoSource()
+{
+    if (!_videoSettings) {
+        qCWarning(VideoManagerLog) << "Video settings not available";
+        return;
+    }
+
+    // Get current active source
+    int currentSource = _videoSettings->activeVideoSource()->rawValue().toInt();
+    
+    // Swap to the other source
+    int newSource = (currentSource == 0) ? 1 : 0;
+    _videoSettings->activeVideoSource()->setRawValue(newSource);
+    
+    qCDebug(VideoManagerLog) << "Swapped video source from" << (currentSource == 0 ? "Primary" : "Secondary") 
+                            << "to" << (newSource == 0 ? "Primary" : "Secondary");
+    
+    // Trigger video source change
+    _videoSourceChanged();
 }
 
 /*===========================================================================*/

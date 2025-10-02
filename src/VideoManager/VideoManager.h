@@ -61,6 +61,7 @@ public:
     Q_INVOKABLE void startVideo();
     Q_INVOKABLE void stopRecording();
     Q_INVOKABLE void stopVideo();
+    Q_INVOKABLE void swapVideoSource();
 
     void init(QQuickWindow *rootWindow);
     void cleanup();

@@ -112,9 +112,51 @@ Item {
         property double radius:     20
         property var trackingROI:   null
         property var trackingStatus: trackingStatusComponent.createObject(flyViewVideoMouseArea, {})
+        
+        // Triple-click detection properties
+        property int clickCount:    0
+        property var clickTimer:    null
 
-        onClicked:       onScreenGimbalController.clickControl()
-        onDoubleClicked: QGroundControl.videoManager.fullScreen = !QGroundControl.videoManager.fullScreen
+        onClicked: {
+            onScreenGimbalController.clickControl()
+            
+            // Handle triple-click detection
+            clickCount++
+            if (clickCount === 1) {
+                // Start timer for triple-click detection
+                if (clickTimer) {
+                    clickTimer.stop()
+                    clickTimer.destroy()
+                }
+                clickTimer = Qt.createQmlObject("import QtQuick 2.0; Timer { interval: 500; repeat: false; }", flyViewVideoMouseArea)
+                clickTimer.triggered.connect(function() {
+                    clickCount = 0
+                    clickTimer.destroy()
+                    clickTimer = null
+                })
+                clickTimer.start()
+            } else if (clickCount === 3) {
+                // Triple-click detected - swap video source
+                QGroundControl.videoManager.swapVideoSource()
+                clickCount = 0
+                if (clickTimer) {
+                    clickTimer.stop()
+                    clickTimer.destroy()
+                    clickTimer = null
+                }
+            }
+        }
+        
+        onDoubleClicked: {
+            QGroundControl.videoManager.fullScreen = !QGroundControl.videoManager.fullScreen
+            // Reset click count on double-click
+            clickCount = 0
+            if (clickTimer) {
+                clickTimer.stop()
+                clickTimer.destroy()
+                clickTimer = null
+            }
+        }
 
         onPressed:(mouse) => {
             onScreenGimbalController.pressControl()
