@@ -42,6 +42,71 @@ QGroundControl is *open-source*, meaning you have the power to shape it! Whether
 
 ---
 
+## Dual Video Source – Project State and How-To
+
+This fork adds a secondary video source to QGroundControl and a fast swap gesture. It’s ready to build on macOS locally and on Windows via GitHub Actions (or locally, if preferred).
+
+### What’s implemented
+- Secondary source settings with feature parity:
+  - `videoSource2`, `udpUrl2`, `tcpUrl2`, `rtspUrl2`
+  - `aspectRatio2`, `videoFit2`, `rtspTimeout2`
+  - `activeVideoSource` to track which source is live
+- Triple‑click on the video view swaps between primary and secondary sources
+- Video pipeline uses the active source’s URIs, aspect ratio/fit, and RTSP timeout
+- Settings UI updated with “Secondary Connection” and “Secondary Settings”
+
+### How to test the feature
+1) Open Settings → General → Video
+2) Configure Primary Source (e.g., UDP h.264 5600) and Secondary Source (e.g., UDP h.264 5601)
+3) Triple‑click the video view to swap the active source
+
+### Build on macOS (local)
+Prereqs: Homebrew CMake, Ninja, Qt 6 (Homebrew), and GStreamer.framework.
+
+```bash
+cd "qgroundcontrol"
+# Install dependencies (GStreamer + tools)
+bash tools/setup/install-dependencies-osx.sh
+
+# Configure & build (uses Qt 6 from Homebrew)
+cmake -S . -B build/qt6-macOS -G Ninja -DQt6_DIR="/opt/homebrew/opt/qt/lib/cmake/Qt6"
+ninja -C build/qt6-macOS
+
+# Package DMG (ad‑hoc signed by default)
+cmake --build build/qt6-macOS --target package
+```
+
+Artifacts:
+- App: `build/qt6-macOS/QGroundControl.app`
+- DMG: `build/qt6-macOS/QGroundControl-*.dmg`
+
+### Build on Windows (GitHub Actions)
+This repository includes a ready‑to‑use workflow: `.github/workflows/windows-release.yml`.
+
+Steps:
+1) Push branch `dual-video-ci` (or your branch) to GitHub
+2) In GitHub → Actions → “Windows Release” → Run workflow
+3) Download artifacts (`QGroundControl.exe` and CPack outputs)
+
+See `BUILD_WINDOWS.md` for details.
+
+### Build on Windows (local, optional)
+From elevated PowerShell in the repo root:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+./tools/setup/windows-build.ps1 -QtVersion 6.9.2 -Config Release
+```
+
+Artifacts:
+- `build\qt6-Windows\Release\QGroundControl.exe`
+- CPack outputs under `build\qt6-Windows\_CPack_Packages`
+
+### Next actions & direction
+- Validate macOS DMG launch and triple‑click source swap
+- Trigger the Windows Action run and verify artifacts start video
+- If you need code signing/notarization, add signing identities to the mac packaging step and a Windows signing step in the workflow
+
 ### 🔗 *Useful Links*
 
 - 🌐 [Official Website](http://qgroundcontrol.com)
