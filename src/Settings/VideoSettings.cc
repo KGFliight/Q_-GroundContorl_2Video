@@ -118,6 +118,57 @@ DECLARE_SETTINGSFACT_NO_FUNC(VideoSettings, forceVideoDecoder)
     return _forceVideoDecoderFact;
 }
 
+// Secondary video source settings
+DECLARE_SETTINGSFACT_NO_FUNC(VideoSettings, videoSource2)
+{
+    if (!_videoSource2Fact) {
+        _videoSource2Fact = _createSettingsFact(videoSource2Name);
+        // Setup enum values for videoSource2 settings into meta data
+        QVariantList videoSourceList;
+#if defined(QGC_GST_STREAMING) || defined(QGC_QT_STREAMING)
+        videoSourceList.append(videoSourceRTSP);
+        videoSourceList.append(videoSourceUDPH264);
+        videoSourceList.append(videoSourceUDPH265);
+        videoSourceList.append(videoSourceTCP);
+        videoSourceList.append(videoSourceMPEGTS);
+        videoSourceList.append(videoSource3DRSolo);
+        videoSourceList.append(videoSourceParrotDiscovery);
+        videoSourceList.append(videoSourceYuneecMantisG);
+
+        #ifdef QGC_HERELINK_AIRUNIT_VIDEO
+            videoSourceList.append(videoSourceHerelinkAirUnit);
+        #else
+            videoSourceList.append(videoSourceHerelinkHotspot);
+        #endif
+#endif
+#ifndef QGC_DISABLE_UVC
+        videoSourceList.append(UVCReceiver::getDeviceNameList());
+#endif
+        if (videoSourceList.count() == 0) {
+            videoSourceList.append(videoSourceNoVideo);
+        } else {
+            videoSourceList.insert(0, videoDisabled);
+        }
+
+        // make translated strings
+        QStringList videoSourceCookedList;
+        for (const QVariant& videoSource: videoSourceList) {
+            videoSourceCookedList.append( VideoSettings::tr(videoSource.toString().toStdString().c_str()) );
+        }
+
+        _nameToMetaDataMap[videoSource2Name]->setEnumInfo(videoSourceCookedList, videoSourceList);
+        _videoSource2Fact->setRawValue(videoDisabled);
+        connect(_videoSource2Fact, &Fact::valueChanged, this, &VideoSettings::_configChanged);
+    }
+    return _videoSource2Fact;
+}
+
+DECLARE_SETTINGSFACT(VideoSettings, udpUrl2)
+DECLARE_SETTINGSFACT(VideoSettings, tcpUrl2)
+DECLARE_SETTINGSFACT(VideoSettings, rtspUrl2)
+DECLARE_SETTINGSFACT(VideoSettings, aspectRatio2)
+DECLARE_SETTINGSFACT(VideoSettings, activeVideoSource)
+
 DECLARE_SETTINGSFACT_NO_FUNC(VideoSettings, lowLatencyMode)
 {
     if (!_lowLatencyModeFact) {
